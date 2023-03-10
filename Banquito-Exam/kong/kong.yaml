@@ -1,0 +1,41 @@
+_format_version: "3.0"
+_transform: true
+
+services:
+  - name: branch-service
+    url: http://branches:8081/api/v1/branches
+    routes:
+      - name: branch-service-routes
+        paths: 
+          - /api/v1/branches
+  - name: interestrate-service
+    url: http://products-accounts:8082/api/v1/interestrates
+    routes:
+      - name: interestrate-service-routes
+        paths: 
+          - /api/v1/interestrates
+  - name: product-account-service
+    url: http://products-accounts:8082/api/v1/productsaccounts
+    routes:
+      - name: product-account-service-routes
+        paths: 
+          - /api/v1/productsaccounts
+
+plugins:
+  - name: key-auth
+    config:
+      key_names: 
+        - "test-api-key"
+      key_in_header: true
+      
+  - name: rate-limiting
+    config:
+      policy: "local"
+      limit_by: "ip"
+      second: 5
+      hour: 10000
+
+consumers:
+  - username: "sebask8er"
+    keyauth_credentials:
+    - key: my-key

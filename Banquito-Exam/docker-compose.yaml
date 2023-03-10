@@ -1,0 +1,94 @@
+version: '3.7'
+
+networks:
+  default:
+    name: kong-net
+
+services:
+  kong-database:
+    image: postgres:9.6-alpine
+    hostname: kong-database
+    container_name: kong-database
+    environment:
+      POSTGRES_USER: "kong"
+      POSTGRES_DB: "kong"
+      POSTGRES_PASSWORD: "kong"
+    ports:
+      - "5432:5432"
+      
+  kong-bootstrap:
+    image: kong:3.1.1-alpine
+    hostname: kong
+    container_name: kong-bootstrap
+    depends_on:
+      - kong-database
+    environment:
+      KONG_DATABASE: "postgres"
+      KONG_PG_HOST: "kong-database"
+      KONG_PG_DATABASE: "kong"
+      KONG_PG_USER: "kong"
+      KONG_PG_PASSWORD: "kong"
+    command: "kong migrations bootstrap"
+    restart: "on-failure"
+
+  kong:
+    image: kong:3.1.1-alpine
+    hostname: kong
+    container_name: kong
+    restart: always
+    depends_on:
+      - kong-bootstrap
+    environment:
+      KONG_DATABASE: "postgres"
+      KONG_PG_HOST: "kong-database"
+      KONG_PG_DATABASE: "kong"
+      KONG_PG_USER: "kong"
+      KONG_PG_PASSWORD: "kong"
+      KONG_PROXY_ACCESS_LOG: /dev/stdout
+      KONG_ADMIN_ACCESS_LOG: /dev/stdout
+      KONG_PROXY_ERROR_LOG: /dev/stdout
+      KONG_ADMIN_ERROR_LOG: /dev/stdout
+      KONG_ADMIN_LISTEN: "0.0.0.0:8001, 0.0.0.0:8444 ssl"
+    command: "kong start"
+    ports: 
+      - "8000:8000"
+      - "8443:8443"
+      - "8001:8001"
+      - "8444:8444"
+
+  branches:
+    container_name: branches
+    build:
+      context: branches
+    image: branches:latest
+    hostname: branches
+    depends_on:
+      - mongo
+
+  products-accounts:
+    container_name: products-accounts
+    build:
+      context: products-accounts
+    image: products-accounts:latest
+    hostname: products-accounts
+    depends_on:
+      - postgres
+
+  mongo:
+    image: mongo
+    container_name: mongo-client
+    hostname: mongo-client
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: root
+
+  postgres:
+    image: postgres
+    hostname: postgres
+    container_name: postgres-client
+    environment:
+      - POSTGRES_USER=root
+      - POSTGRES_PASSWORD=root
+      - POSTGRES_DB=products_accounts
+    volumes:
+      - ./script.sql:/docker-entrypoint-initdb.d/init.sql
